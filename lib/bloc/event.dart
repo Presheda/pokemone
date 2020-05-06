@@ -1,0 +1,4 @@
+
+enum PokeMonEvent{
+ load
+}

@@ -1,43 +1,38 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:http/http.dart' as http;
+import 'package:pokemone/bloc/bloc.dart';
+import 'package:pokemone/bloc/event.dart';
+import 'package:pokemone/bloc/state.dart';
 import 'package:pokemone/pokemon.dart';
 import 'package:pokemone/pokemondetail.dart';
 
 void main() => runApp(MaterialApp(
   title: "Poke App",
-  home:  HomePage(),
+  home: HomePage(),
   debugShowCheckedModeBanner: false,
 ));
 
 class HomePage extends StatefulWidget {
+
+
+
   @override
   _HomePageState createState() => _HomePageState();
 }
 
 class _HomePageState extends State<HomePage> {
+  PokemonBloc _pokemonBloc;
 
-  var url = "https://raw.githubusercontent.com/Biuni/PokemonGO-Pokedex/master/pokedex.json";
-
-  PokeHub pokeHub;
 
   @override
   void initState() {
     super.initState();
-    fetchData();
-
+   _pokemonBloc = PokemonBloc();
+    _pokemonBloc.add(PokeMonEvent.load);
   }
-
-  fetchData() async{
-
-    var res = await http.get(url);
-    var decodedJson = jsonDecode(res.body);
-      pokeHub = PokeHub.fromJson(decodedJson);
-    setState(() {
-    });
-  }
-
 
   @override
   Widget build(BuildContext context) {
@@ -46,56 +41,81 @@ class _HomePageState extends State<HomePage> {
         title: Text("Poke App"),
         backgroundColor: Colors.cyan,
       ),
+      body: BlocBuilder<PokemonBloc, PokeMonState>(
+        bloc: _pokemonBloc,
+        builder: (context, state) {
+          if (state is IsLoading) {
+            return Center(
+              child: CircularProgressIndicator(),
+            );
+          }
 
-      body: pokeHub == null ? Center(
-        child: CircularProgressIndicator(),
-      ) : GridView.count(
-        crossAxisCount: 2,
-        children: pokeHub.pokemon.map((poke) => Padding(
-          padding: const EdgeInsets.all(8.0),
-          child: InkWell(
-            onTap: () {
-              Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (context) => PokeDetail(
-                        pokemon: poke,
-                      )));
-            },
-            child: Hero(
-              tag: poke.img,
-              child: Card(
-                elevation: 3.0,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: <Widget>[
-                    Container(
-                      height: 100.0,
-                      width: 100.0,
-                      decoration: BoxDecoration(
-                        image: DecorationImage(
-                          image: NetworkImage(poke.img)
-                        )
+          if (state is LoadSuccess) {
+
+            return GridView.count(
+              crossAxisCount: 2,
+              children:
+                  state.pokeHub.pokemon.map((poke) => Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: InkWell(
+                  onTap: () {
+                    Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => PokeDetail(
+                              pokemon: poke,
+                            )));
+                  },
+                  child: Hero(
+                    tag: poke.img,
+                    child: Card(
+                      elevation: 3.0,
+                      child: Column(
+                        mainAxisAlignment:
+                        MainAxisAlignment.spaceEvenly,
+                        children: <Widget>[
+                          Container(
+                            height: 100.0,
+                            width: 100.0,
+                            decoration: BoxDecoration(
+                                image: DecorationImage(
+                                    image: NetworkImage(poke.img))),
+                          ),
+                          Text(
+                            poke.name,
+                            style: TextStyle(
+                                fontSize: 15.0,
+                                fontWeight: FontWeight.bold),
+                          )
+                        ],
                       ),
                     ),
-                    Text(poke.name, style: TextStyle(fontSize: 15.0, fontWeight: FontWeight.bold),)
-                  ],
+                  ),
                 ),
-              ),
-            ),
-          ),
-        )).toList(),
-      ),
+              ))
+                  .toList(),
+            );
+          }
 
+          if (state is LoadFailure) {
+            return Center(child: Text("Error Occured. Please try again",
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
+            ));
+          }
+
+          return Center(
+            child: Text("Unknown Error",
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),),
+          );
+        },
+      ),
       floatingActionButton: FloatingActionButton(
-        onPressed: (){},
+        onPressed: () {
+          _pokemonBloc.add(PokeMonEvent.load);
+        },
         backgroundColor: Colors.cyan,
         child: Icon(Icons.refresh),
       ),
     );
   }
-
-  
 }
-
-
